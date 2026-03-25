@@ -1,4 +1,8 @@
-const { createAudioPlayer, createAudioResource, AudioPlayerStatus } = require("@discordjs/voice");
+const {
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus
+} = require("@discordjs/voice");
 const play = require("play-dl");
 
 const queues = new Map();
@@ -17,7 +21,7 @@ function getQueue(id) {
 async function playSong(id) {
   const q = queues.get(id);
 
-  if (!q || q.songs.length === 0) {
+  if (!q || !q.songs.length) {
     q?.connection?.destroy();
     queues.delete(id);
     return;
@@ -25,24 +29,18 @@ async function playSong(id) {
 
   const song = q.songs[0];
 
-  try {
-    const stream = await play.stream(song.url);
-    const resource = createAudioResource(stream.stream, {
-      inputType: stream.type
-    });
+  const stream = await play.stream(song.url);
 
-    q.player.play(resource);
+  const resource = createAudioResource(stream.stream, {
+    inputType: stream.type
+  });
 
-    q.player.once(AudioPlayerStatus.Idle, () => {
-      q.songs.shift();
-      playSong(id);
-    });
+  q.player.play(resource);
 
-  } catch (err) {
-    console.log(err);
+  q.player.once(AudioPlayerStatus.Idle, () => {
     q.songs.shift();
     playSong(id);
-  }
+  });
 }
 
 module.exports = { getQueue, playSong };
