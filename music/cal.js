@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { joinVoiceChannel } = require("@discordjs/voice");
 const play = require("play-dl");
 const { getQueue, playSong } = require("../music/player");
@@ -12,12 +12,13 @@ module.exports = {
   async execute(interaction) {
     const query = interaction.options.getString("şarkı");
     const vc = interaction.member.voice.channel;
-    if (!vc) return interaction.reply("Ses kanalına gir");
+
+    if (!vc) return interaction.reply("❌ Ses kanalına gir");
 
     const q = getQueue(interaction.guild.id);
 
     const result = await play.search(query, { limit: 1 });
-    if (!result.length) return interaction.reply("Bulunamadı");
+    if (!result.length) return interaction.reply("❌ Bulunamadı");
 
     q.songs.push({ title: result[0].title, url: result[0].url });
 
@@ -27,10 +28,22 @@ module.exports = {
         guildId: interaction.guild.id,
         adapterCreator: interaction.guild.voiceAdapterCreator
       });
+
       q.connection.subscribe(q.player);
       playSong(interaction.guild.id);
     }
 
-    interaction.reply("🎶 " + result[0].title);
+    // BUTONLAR
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("pause").setLabel("⏸").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("resume").setLabel("▶").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("skip").setLabel("⏭").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("stop").setLabel("⛔").setStyle(ButtonStyle.Danger)
+    );
+
+    interaction.reply({
+      content: `🎶 ${result[0].title}`,
+      components: [row]
+    });
   }
 };
