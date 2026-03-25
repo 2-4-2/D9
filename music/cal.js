@@ -12,38 +12,28 @@ module.exports = {
   async execute(interaction) {
     const query = interaction.options.getString("şarkı");
     const vc = interaction.member.voice.channel;
-
     if (!vc) return interaction.reply("❌ Ses kanalına gir");
 
     const q = getQueue(interaction.guild.id);
-
     const result = await play.search(query, { limit: 1 });
     if (!result.length) return interaction.reply("❌ Bulunamadı");
 
     q.songs.push({ title: result[0].title, url: result[0].url });
 
     if (!q.connection) {
-      q.connection = joinVoiceChannel({
-        channelId: vc.id,
-        guildId: interaction.guild.id,
-        adapterCreator: interaction.guild.voiceAdapterCreator
-      });
-
+      q.connection = joinVoiceChannel({ channelId: vc.id, guildId: interaction.guild.id, adapterCreator: interaction.guild.voiceAdapterCreator });
       q.connection.subscribe(q.player);
       playSong(interaction.guild.id);
     }
 
-    // BUTONLAR
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("pause").setLabel("⏸").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("resume").setLabel("▶").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId("skip").setLabel("⏭").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("bass").setLabel("🔊 Bass").setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId("stop").setLabel("⛔").setStyle(ButtonStyle.Danger)
     );
 
-    interaction.reply({
-      content: `🎶 ${result[0].title}`,
-      components: [row]
-    });
+    interaction.reply({ content: `🎶 ${result[0].title}`, components: [row] });
   }
 };
