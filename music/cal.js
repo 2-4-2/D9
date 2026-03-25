@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { joinVoiceChannel } = require("@discordjs/voice");
-const play = require("play-dl");
 const { getQueue, playSong } = require("../music/player");
+const ytdl = require("ytdl-core");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -15,10 +15,9 @@ module.exports = {
     if (!vc) return interaction.reply("❌ Ses kanalına gir");
 
     const q = getQueue(interaction.guild.id);
-    const result = await play.search(query, { limit: 1 });
-    if (!result.length) return interaction.reply("❌ Bulunamadı");
+    const url = (ytdl.validateURL(query)) ? query : (await ytdl.getInfo(query)).videoDetails.video_url;
 
-    q.songs.push({ title: result[0].title, url: result[0].url });
+    q.songs.push({ title: query, url });
 
     if (!q.connection) {
       q.connection = joinVoiceChannel({ channelId: vc.id, guildId: interaction.guild.id, adapterCreator: interaction.guild.voiceAdapterCreator });
@@ -34,6 +33,6 @@ module.exports = {
       new ButtonBuilder().setCustomId("stop").setLabel("⛔").setStyle(ButtonStyle.Danger)
     );
 
-    interaction.reply({ content: `🎶 ${result[0].title}`, components: [row] });
+    interaction.reply({ content: `🎶 ${query}`, components: [row] });
   }
 };
