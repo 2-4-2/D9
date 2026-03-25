@@ -1,15 +1,13 @@
 require("dotenv").config();
-const express = require("express");
 const fs = require("fs");
-const { Client, Collection, GatewayIntentBits } = require("discord.js");
-
-const app = express();
-
-// PANEL (Railway uyumasın diye)
-app.get("/", (req, res) => {
-  res.send("🤖 Bot aktif");
-});
-app.listen(process.env.PORT || 3000);
+const {
+  Client,
+  Collection,
+  GatewayIntentBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require("discord.js");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates]
@@ -17,32 +15,57 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// KOMUTLARI YÜKLE
-const commandFiles = fs.readdirSync("./commands").filter(f => f.endsWith(".js"));
+// Komut yükleme
+const commandFiles = fs.readdirSync("./commands");
 for (const file of commandFiles) {
   const cmd = require(`./commands/${file}`);
   client.commands.set(cmd.data.name, cmd);
 }
 
-// SLASH KOMUT REGISTER
+// Slash komut register
 client.once("ready", async () => {
-  const commands = client.commands.map(c => c.data);
-  await client.application.commands.set(commands);
+  await client.application.commands.set(
+    client.commands.map(c => c.data)
+  );
   console.log("🔥 BOT AKTİF");
 });
 
-// KOMUT ÇALIŞTIR
+// Slash komut
 client.on("interactionCreate", async interaction => {
-  if (!interaction.isChatInputCommand()) return;
+  if (interaction.isChatInputCommand()) {
+    const cmd = client.commands.get(interaction.commandName);
+    if (!cmd) return;
 
-  const cmd = client.commands.get(interaction.commandName);
-  if (!cmd) return;
-
-  try {
     await cmd.execute(interaction);
-  } catch (err) {
-    console.log(err);
-    interaction.reply("Hata oluştu");
+  }
+
+  // BUTONLAR
+  if (interaction.isButton()) {
+    const { getQueue } = require("./music/player");
+    const q = getQueue(interaction.guild.id);
+
+    if (!q) return interaction.reply({ content: "❌ Kuyruk yok", ephemeral: true });
+
+    if (interaction.customId === "pause") {
+      q.player.pause();
+      interaction.reply("⏸️ Duraklatıldı");
+    }
+
+    if (interaction.customId === "resume") {
+      q.player.unpause();
+      interaction.reply("▶️ Devam ediyor");
+    }
+
+    if (interaction.customId === "skip") {
+      q.player.stop();
+      interaction.reply("⏭️ Geçildi");
+    }
+
+    if (interaction.customId === "stop") {
+      q.songs = [];
+      q.player.stop();
+      interaction.reply("⛔ Durduruldu");
+    }
   }
 });
 
