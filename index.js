@@ -1,15 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
-const {
-  Client,
-  Collection,
-  GatewayIntentBits,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
-} = require("discord.js");
-const { joinVoiceChannel } = require("@discordjs/voice");
-const { getQueue, playSong } = require("./music/player");
+const { Client, Collection, GatewayIntentBits } = require("discord.js");
+const { getQueue } = require("./music/player");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates]
@@ -17,19 +9,16 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Komutları yükle
 fs.readdirSync("./commands").forEach(file => {
   const cmd = require(`./commands/${file}`);
   client.commands.set(cmd.data.name, cmd);
 });
 
-// Komutları kaydet
 client.once("ready", async () => {
   await client.application.commands.set(client.commands.map(c => c.data));
   console.log("🔥 Bot aktif");
 });
 
-// Slash komut ve buton kontrol
 client.on("interactionCreate", async interaction => {
   if (interaction.isChatInputCommand()) {
     const cmd = client.commands.get(interaction.commandName);
@@ -41,11 +30,13 @@ client.on("interactionCreate", async interaction => {
     const q = getQueue(interaction.guild.id);
     if (!q) return interaction.reply({ content: "❌ Kuyruk yok", ephemeral: true });
 
-    if (interaction.customId === "pause") q.player.pause() && interaction.reply("⏸ Duraklatıldı");
-    if (interaction.customId === "resume") q.player.unpause() && interaction.reply("▶ Devam");
-    if (interaction.customId === "skip") q.player.stop() && interaction.reply("⏭ Geçildi");
-    if (interaction.customId === "stop") { q.songs=[]; q.player.stop(); interaction.reply("⛔ Durduruldu"); }
-    if (interaction.customId === "bass") { q.bass=!q.bass; interaction.reply(q.bass ? "🔊 Bass Açıldı" : "🔊 Bass Kapandı"); }
+    switch (interaction.customId) {
+      case "pause": q.player.pause(); interaction.reply("⏸ Duraklatıldı"); break;
+      case "resume": q.player.unpause(); interaction.reply("▶ Devam"); break;
+      case "skip": q.player.stop(); interaction.reply("⏭ Geçildi"); break;
+      case "stop": q.songs=[]; q.player.stop(); interaction.reply("⛔ Durduruldu"); break;
+      case "bass": q.bass=!q.bass; interaction.reply(q.bass ? "🔊 Bass Açıldı" : "🔊 Bass Kapandı"); break;
+    }
   }
 });
 
