@@ -8,6 +8,8 @@ const {
   ButtonBuilder,
   ButtonStyle
 } = require("discord.js");
+const { joinVoiceChannel } = require("@discordjs/voice");
+const { getQueue, playSong } = require("./music/player");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates]
@@ -15,61 +17,36 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Komut yükleme
-const commandFiles = fs.readdirSync("./commands");
-for (const file of commandFiles) {
+// Komutları yükle
+fs.readdirSync("./commands").forEach(file => {
   const cmd = require(`./commands/${file}`);
   client.commands.set(cmd.data.name, cmd);
-}
-
-// Slash komut register
-client.once("ready", async () => {
-  await client.application.commands.set(
-    client.commands.map(c => c.data)
-  );
-  console.log("🔥 BOT AKTİF");
 });
 
-// Slash komut
+// Komutları kaydet
+client.once("ready", async () => {
+  await client.application.commands.set(client.commands.map(c => c.data));
+  console.log("🔥 Bot aktif");
+});
+
+// Slash komut ve buton kontrol
 client.on("interactionCreate", async interaction => {
   if (interaction.isChatInputCommand()) {
     const cmd = client.commands.get(interaction.commandName);
     if (!cmd) return;
-
     await cmd.execute(interaction);
   }
 
-  // BUTONLAR
   if (interaction.isButton()) {
-    const { getQueue } = require("./music/player");
     const q = getQueue(interaction.guild.id);
-
     if (!q) return interaction.reply({ content: "❌ Kuyruk yok", ephemeral: true });
 
-    if (interaction.customId === "pause") {
-      q.player.pause();
-      interaction.reply("⏸️ Duraklatıldı");
-    }
-
-    if (interaction.customId === "resume") {
-      q.player.unpause();
-      interaction.reply("▶️ Devam ediyor");
-    }
-
-    if (interaction.customId === "skip") {
-      q.player.stop();
-      interaction.reply("⏭️ Geçildi");
-    }
-
-    if (interaction.customId === "stop") {
-      q.songs = [];
-      q.player.stop();
-      interaction.reply("⛔ Durduruldu");
-    }
+    if (interaction.customId === "pause") q.player.pause() && interaction.reply("⏸ Duraklatıldı");
+    if (interaction.customId === "resume") q.player.unpause() && interaction.reply("▶ Devam");
+    if (interaction.customId === "skip") q.player.stop() && interaction.reply("⏭ Geçildi");
+    if (interaction.customId === "stop") { q.songs=[]; q.player.stop(); interaction.reply("⛔ Durduruldu"); }
+    if (interaction.customId === "bass") { q.bass=!q.bass; interaction.reply(q.bass ? "🔊 Bass Açıldı" : "🔊 Bass Kapandı"); }
   }
 });
-
-process.on("uncaughtException", console.error);
-process.on("unhandledRejection", console.error);
 
 client.login(process.env.TOKEN);
